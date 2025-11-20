@@ -86,10 +86,7 @@ export function BibleStudyGroupList() {
     const data = doc.data();
     console.log('COMPONENT: Doc', doc.id, 'raw data:', data);
     console.log('COMPONENT: Doc', doc.id, 'members field:', data.members);
-    return {
-      id: doc.id,
-      ...data
-    };
+    return data;
   }) || []) as BibleStudyGroup[];
 
   console.log('COMPONENT: Final bibleStudyGroups:', bibleStudyGroups);

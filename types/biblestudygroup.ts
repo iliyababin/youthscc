@@ -47,8 +47,11 @@ export interface BibleStudyGroup {
 
 /**
  * Data required to create a new bible study group
+ * Members array is optional as new groups start empty
  */
-export type CreateBibleStudyGroupData = Omit<BibleStudyGroup, 'id' | 'createdAt' | 'updatedAt'>;
+export type CreateBibleStudyGroupData = Omit<BibleStudyGroup, 'id' | 'createdAt' | 'updatedAt' | 'members'> & {
+  members?: Member[];
+};
 
 /**
  * Data required to update a bible study group
