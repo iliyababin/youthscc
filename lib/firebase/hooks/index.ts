@@ -4,4 +4,6 @@ export {
   useCreateBibleStudyGroup,
   useUpdateBibleStudyGroup,
   useDeleteBibleStudyGroup,
+  useJoinBibleStudyGroup,
+  useLeaveBibleStudyGroup,
 } from './useBibleStudyGroups';

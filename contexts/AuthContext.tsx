@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged } from 'firebase/auth';
+import { User, onAuthStateChanged, updateProfile, type ConfirmationResult } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import {
   loginWithEmailPassword,
@@ -9,6 +9,10 @@ import {
   logout as authLogout,
   sendVerificationEmail,
   getAuthErrorMessage,
+  setupRecaptcha,
+  sendPhoneVerificationCode,
+  verifyPhoneCode,
+  cleanupRecaptcha,
 } from '@/lib/auth/authService';
 import { createUserProfile } from '@/lib/firebase/userService';
 import type { EmailPasswordCredentials, SignupData } from '@/types/auth';
@@ -21,6 +25,8 @@ interface AuthContextType {
   signup: (data: SignupData) => Promise<void>;
   logout: () => Promise<void>;
   sendEmailVerification: () => Promise<void>;
+  sendPhoneCode: (phoneNumber: string, recaptchaContainerId: string) => Promise<ConfirmationResult>;
+  verifyPhoneAndSignIn: (confirmationResult: ConfirmationResult, code: string, displayName?: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -99,10 +105,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setError(null);
       await sendVerificationEmail();
-    } catch (err: any) {
+    } catch (err) {
       const errorMessage = 'Failed to send verification email';
       setError(errorMessage);
       throw new Error(errorMessage);
+    }
+  };
+
+  const sendPhoneCode = async (phoneNumber: string, recaptchaContainerId: string): Promise<ConfirmationResult> => {
+    try {
+      setError(null);
+      const recaptchaVerifier = setupRecaptcha(recaptchaContainerId);
+      const confirmationResult = await sendPhoneVerificationCode(phoneNumber, recaptchaVerifier);
+      return confirmationResult;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to send verification code';
+      setError(errorMessage);
+      cleanupRecaptcha();
+      throw new Error(errorMessage);
+    }
+  };
+
+  const verifyPhoneAndSignIn = async (confirmationResult: ConfirmationResult, code: string, displayName?: string): Promise<void> => {
+    try {
+      setError(null);
+      setLoading(true);
+      const userCredential = await verifyPhoneCode(confirmationResult, code);
+      const user = userCredential;
+
+      // Check if this is a new user (no existing display name)
+      const isNewUser = !user.displayName;
+
+      // Only update profile with display name if it's a new user and displayName is provided
+      if (isNewUser && displayName && user) {
+        await updateProfile(user, { displayName });
+      }
+
+      // Create user profile in Firestore if it doesn't exist (only for new users)
+      if (isNewUser) {
+        try {
+          await createUserProfile(
+            user.uid,
+            user.phoneNumber || '',
+            displayName || user.displayName || undefined,
+            'user'
+          );
+        } catch (firestoreError) {
+          console.error('Error creating user profile:', firestoreError);
+        }
+      }
+
+      cleanupRecaptcha();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Invalid verification code';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -118,6 +177,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signup,
     logout,
     sendEmailVerification: sendEmailVerificationHandler,
+    sendPhoneCode,
+    verifyPhoneAndSignIn,
     clearError,
   };
 

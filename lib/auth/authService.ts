@@ -12,7 +12,10 @@ import {
   sendSignInLinkToEmail,
   isSignInWithEmailLink,
   signInWithEmailLink,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
   type User,
+  type ConfirmationResult,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import type {
@@ -116,9 +119,70 @@ export function isSignInLink(url?: string): boolean {
 }
 
 // ==========================================
-// PHONE AUTHENTICATION (Future)
+// PHONE AUTHENTICATION
 // ==========================================
-// Placeholder for phone auth - implement when needed
+
+let recaptchaVerifier: RecaptchaVerifier | null = null;
+
+/**
+ * Setup invisible reCAPTCHA verifier
+ */
+export function setupRecaptcha(containerId: string): RecaptchaVerifier {
+  if (recaptchaVerifier) {
+    recaptchaVerifier.clear();
+    recaptchaVerifier = null;
+  }
+
+  // Clear the container element
+  const container = document.getElementById(containerId);
+  if (container) {
+    container.innerHTML = '';
+  }
+
+  recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
+    size: 'invisible',
+    callback: () => {
+      // reCAPTCHA solved - will proceed with phone auth
+    },
+    'expired-callback': () => {
+      // Response expired. Ask user to solve reCAPTCHA again.
+      console.log('reCAPTCHA expired');
+    }
+  });
+
+  return recaptchaVerifier;
+}
+
+/**
+ * Send verification code to phone number
+ */
+export async function sendPhoneVerificationCode(
+  phoneNumber: string,
+  recaptchaVerifier: RecaptchaVerifier
+): Promise<ConfirmationResult> {
+  return await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
+}
+
+/**
+ * Verify phone code and sign in
+ */
+export async function verifyPhoneCode(
+  confirmationResult: ConfirmationResult,
+  code: string
+): Promise<User> {
+  const userCredential = await confirmationResult.confirm(code);
+  return userCredential.user;
+}
+
+/**
+ * Clean up reCAPTCHA verifier
+ */
+export function cleanupRecaptcha(): void {
+  if (recaptchaVerifier) {
+    recaptchaVerifier.clear();
+    recaptchaVerifier = null;
+  }
+}
 
 // ==========================================
 // SIGN OUT

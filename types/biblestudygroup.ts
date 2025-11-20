@@ -9,6 +9,14 @@ export interface Leader {
 }
 
 /**
+ * Represents a member in a bible study group
+ */
+export interface Member {
+  userId: string;
+  joinedAt?: Date;
+}
+
+/**
  * Day of the week
  */
 export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
@@ -32,6 +40,7 @@ export interface BibleStudyGroup {
   location: string;
   leaders: Leader[];
   meetingTimes: MeetingTime[]; // Array of recurring meeting times (required)
+  members: Member[]; // Array of members (required, can be empty)
   createdAt?: Date;
   updatedAt?: Date;
 }

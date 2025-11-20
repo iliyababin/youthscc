@@ -31,6 +31,7 @@ const bibleStudyGroupConverter: FirestoreDataConverter<BibleStudyGroup> = {
       location: data.location || '',
       leaders: data.leaders || [],
       meetingTimes: data.meetingTimes || [],
+      members: data.members || [],
       createdAt: data.createdAt?.toDate(),
       updatedAt: data.updatedAt?.toDate(),
     } as BibleStudyGroup;

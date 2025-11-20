@@ -1,15 +1,34 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts';
 import { UserMenu } from '@/components/auth';
+import { User } from 'lucide-react';
 
 export function Header() {
   const { user, loading } = useAuth();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMobileMenuOpen(false);
+      }
+    }
+
+    if (mobileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [mobileMenuOpen]);
 
   // Don't show header on auth pages
   const isAuthPage = pathname?.startsWith('/auth');
@@ -17,7 +36,7 @@ export function Header() {
 
   return (
     <header className="bg-white border-b sticky top-0 z-50 shadow-sm">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-4" ref={menuRef}>
         <div className="flex items-center justify-between h-16">
           {/* Logo/Brand */}
           <Link
@@ -30,29 +49,44 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6">
-            {!loading && user && (
-              <>
-                <Link
-                  href="/biblestudygroups"
-                  className={`text-sm font-medium transition-colors ${
-                    pathname === '/biblestudygroups'
-                      ? 'text-blue-600'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Bible Study Groups
-                </Link>
-                <UserMenu />
-              </>
-            )}
+            <Link
+              href="/"
+              className={`text-sm font-medium transition-colors ${
+                pathname === '/'
+                  ? 'text-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Home
+            </Link>
+            <Link
+              href="/biblestudygroups"
+              className={`text-sm font-medium transition-colors ${
+                pathname === '/biblestudygroups'
+                  ? 'text-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Bible Study Groups
+            </Link>
+
+            {!loading && user && <UserMenu />}
 
             {!loading && !user && (
-              <Link
-                href="/auth"
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
-              >
-                Sign In
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/auth"
+                  className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/auth"
+                  className="px-3 py-1.5 text-sm font-medium text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  Sign up
+                </Link>
+              </div>
             )}
           </nav>
 
@@ -81,34 +115,51 @@ export function Header() {
         {/* Mobile Navigation Menu */}
         {mobileMenuOpen && !loading && (
           <div className="md:hidden py-4 border-t">
-            {user ? (
-              <div className="space-y-4">
-                <Link
-                  href="/biblestudygroups"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`block px-3 py-2 rounded-md text-base font-medium ${
-                    pathname === '/biblestudygroups'
-                      ? 'bg-blue-50 text-blue-600'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
-                >
-                  Bible Study Groups
-                </Link>
-
-                {/* Mobile User Menu */}
-                <div className="px-3 py-2 border-t">
-                  <UserMenu />
-                </div>
-              </div>
-            ) : (
+            <div className="space-y-2">
               <Link
-                href="/auth"
+                href="/"
                 onClick={() => setMobileMenuOpen(false)}
-                className="block w-full px-4 py-2 text-center text-base font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  pathname === '/'
+                    ? 'bg-blue-50 text-blue-600'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`}
               >
-                Sign In
+                Home
               </Link>
-            )}
+              <Link
+                href="/biblestudygroups"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  pathname === '/biblestudygroups'
+                    ? 'bg-blue-50 text-blue-600'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                Bible Study Groups
+              </Link>
+
+              {/* Mobile User Menu or Join */}
+              <div className="pt-4 border-t">
+                {user ? (
+                  <UserMenu />
+                ) : (
+                  <div className="flex items-center justify-between w-full gap-4">
+                    <div className="flex items-center gap-2">
+                      <User className="w-5 h-5 text-gray-600" />
+                      <span className="text-sm font-medium text-gray-700">Guest</span>
+                    </div>
+                    <Link
+                      href="/auth"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md transition-colors ml-auto"
+                    >
+                      Join
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>

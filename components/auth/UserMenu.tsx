@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts';
+import { User } from 'lucide-react';
 
 export function UserMenu() {
   const { user, logout } = useAuth();
-  const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const router = useRouter();
 
@@ -14,45 +14,29 @@ export function UserMenu() {
     setIsLoggingOut(true);
     try {
       await logout();
-      router.push('/auth/login');
+      router.push('/');
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
       setIsLoggingOut(false);
-      setIsOpen(false);
     }
   };
 
   if (!user) return null;
 
   return (
-    <div className="relative">
+    <div className="flex items-center justify-between w-full gap-4">
+      <div className="flex items-center gap-2">
+        <User className="w-5 h-5 text-gray-600" />
+        <span className="text-sm font-medium text-gray-700">{user.displayName || 'Profile'}</span>
+      </div>
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-gray-100 transition-colors"
+        onClick={handleLogout}
+        disabled={isLoggingOut}
+        className="px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-50 ml-auto"
       >
-        <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold">
-          {user.displayName?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
-        </div>
-        <div className="text-left">
-          <p className="text-sm font-medium">{user.displayName || 'User'}</p>
-          <p className="text-xs text-gray-500">{user.email}</p>
-        </div>
+        {isLoggingOut ? 'Logging out...' : 'Sign out'}
       </button>
-
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border z-50">
-          <div className="py-1">
-            <button
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
-            >
-              {isLoggingOut ? 'Logging out...' : 'Sign out'}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
