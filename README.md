@@ -1,36 +1,96 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# YouthSCC
 
-## Getting Started
+Church bible study group management system with Firebase, authentication, and role-based permissions.
 
-First, run the development server:
+## ✨ Features
+
+- 📱 **Mobile-first responsive design**
+- 🔐 **Email/password authentication**
+- 👥 **Role-based access control** (Admin/User)
+- 📋 **Bible study groups management** with leaders
+- ⚡ **Real-time synchronization** across all clients
+- 🔒 **Secure Firestore rules**
+- 📘 **Full TypeScript support**
+
+## 🚀 Quick Start
 
 ```bash
+# Install
+npm install
+
+# Run
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**Then:** Follow [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) to set up Firebase
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📚 Documentation
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)** - Complete setup guide ⭐ START HERE
+- **[docs/FEATURES.md](docs/FEATURES.md)** - How to use bible study groups, auth, and roles
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Project structure and patterns
 
-## Learn More
+## 🛠️ Tech Stack
 
-To learn more about Next.js, take a look at the following resources:
+- **Next.js 16** - React framework with App Router
+- **TypeScript** - Type safety
+- **Firebase** - Auth, Firestore, real-time sync
+- **TanStack Query** - Data fetching and caching
+- **shadcn/ui** - UI components
+- **Tailwind CSS** - Styling
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🎯 Common Tasks
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+**Set up Firebase:**
+→ [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)
 
-## Deploy on Vercel
+**Make someone admin:**
+→ [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md#step-2-make-yourself-admin)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**Use bible study group hooks:**
+→ [docs/FEATURES.md](docs/FEATURES.md#-cell-groups)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Understand the code:**
+→ [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+
+## 📦 Development
+
+```bash
+# Run dev server
+npm run dev
+
+# Build for production
+npm run build
+
+# Start production server
+npm start
+
+# Lint
+npm run lint
+```
+
+## 🔐 Security
+
+- **Public access** to view bible study groups
+- **Authentication required** for creating accounts and admin features
+- **Role-based permissions** (admin/user)
+- **Firestore security rules** enforce access control
+- **Default role:** New users are `"user"` (view-only)
+- **Admin role:** Can create/delete bible study groups
+
+See [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) for setup instructions.
+
+## 📱 Routes
+
+- `/` - Home page
+- `/auth/login` - Login
+- `/auth/signup` - Sign up
+- `/biblestudygroups` - View bible study groups (public access)
+
+## 🤝 Contributing
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for project structure and patterns.
+
+## 📄 License
+
+MIT
