@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   InputOTP,
@@ -62,8 +63,8 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
       // TODO: Implement phone auth
       toast.info('Phone authentication coming soon');
       setStep('phone-verification');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to send verification code');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to send verification code');
     } finally {
       setIsLoading(false);
     }
@@ -78,13 +79,14 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
       onOpenChange(false);
       resetForm();
       if (onSuccess) onSuccess();
-    } catch (error: any) {
+    } catch (error) {
       // If user not found, offer to sign up
-      if (error.message?.includes('No account') || error.message?.includes('user-not-found')) {
+      const errorMessage = error instanceof Error ? error.message : '';
+      if (errorMessage.includes('No account') || errorMessage.includes('user-not-found')) {
         toast.error('No account found. Please sign up.');
         setStep('email-signup');
       } else {
-        toast.error(error.message || 'Failed to login');
+        toast.error(error instanceof Error ? error.message : 'Failed to login');
       }
     } finally {
       setIsLoading(false);
@@ -115,8 +117,8 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
       onOpenChange(false);
       resetForm();
       if (onSuccess) onSuccess();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to create account');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create account');
     } finally {
       setIsLoading(false);
     }
@@ -128,8 +130,8 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
     try {
       // TODO: Implement phone verification
       toast.info('Phone authentication coming soon');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to verify code');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to verify code');
     } finally {
       setIsLoading(false);
     }
@@ -219,7 +221,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
               </Button>
             </div>
             <p className="text-center text-sm text-muted-foreground">
-              Don't have an account?{' '}
+              Don&#39;t have an account?{' '}
               <button
                 type="button"
                 onClick={() => setStep('email-signup')}

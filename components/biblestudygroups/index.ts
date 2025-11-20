@@ -1,2 +1,2 @@
-export { CellGroupList } from './CellGroupList';
-export { CreateCellGroupForm } from './CreateCellGroupForm';
+export { BibleStudyGroupList } from './BibleStudyGroupList';
+export { CreateBibleStudyGroupForm } from './CreateBibleStudyGroupForm';
