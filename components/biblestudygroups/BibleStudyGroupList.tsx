@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useBibleStudyGroups, useDeleteBibleStudyGroup, useJoinBibleStudyGroup, useLeaveBibleStudyGroup } from '@/lib/firebase/hooks';
 import { useUserRole } from '@/hooks';
 import { useAuth } from '@/contexts';
+import { getPublicProfilesByIds } from '@/lib/firebase/userService';
+import type { PublicUserProfile } from '@/types/roles';
 import { MoreVertical, Users, ChevronDown, ChevronUp, Trash2, Edit, Share2, Plus } from 'lucide-react';
 import Link from 'next/link';
 import type { BibleStudyGroup, MeetingTime } from '@/types';
@@ -45,6 +47,56 @@ export function BibleStudyGroupList() {
   const [joinedGroupName, setJoinedGroupName] = useState<string>('');
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const [leaveGroup, setLeaveGroup] = useState<{ id: string; name: string } | null>(null);
+  const [leaderProfiles, setLeaderProfiles] = useState<Map<string, PublicUserProfile>>(new Map());
+
+  // Load leader profiles when groups change
+  useEffect(() => {
+    async function loadLeaderProfiles() {
+      const snapshot = bibleStudyGroupsQuery.data;
+      if (!snapshot) return;
+
+      const groups = (snapshot.docs.map(doc => doc.data()) || []) as BibleStudyGroup[];
+
+      // Collect all unique leader UIDs
+      const allLeaderIds = new Set<string>();
+      groups.forEach(group => {
+        if (group.leaders && Array.isArray(group.leaders)) {
+          group.leaders.forEach(leaderId => {
+            if (typeof leaderId === 'string') {
+              allLeaderIds.add(leaderId);
+            }
+          });
+        }
+      });
+
+      if (allLeaderIds.size === 0) {
+        setLeaderProfiles(new Map());
+        return;
+      }
+
+      try {
+        const profiles = await getPublicProfilesByIds(Array.from(allLeaderIds));
+        setLeaderProfiles(profiles);
+      } catch (error) {
+        console.error('Error loading leader profiles:', error);
+        // Don't fail silently - keep existing profiles
+      }
+    }
+
+    loadLeaderProfiles();
+  }, [bibleStudyGroupsQuery.data]);
+
+  // Helper function to get leader names
+  const getLeaderNames = (leaderIds: string[]): string => {
+    if (!leaderIds || leaderIds.length === 0) return 'None';
+
+    return leaderIds
+      .map(id => {
+        const profile = leaderProfiles.get(id);
+        return profile ? (profile.displayName || 'Unknown') : 'Loading...';
+      })
+      .join(', ');
+  };
 
   // Helper function to format meeting time for display
   const formatMeetingTime = (meetingTime: MeetingTime) => {
@@ -273,7 +325,7 @@ export function BibleStudyGroupList() {
                     <CollapsibleContent className="mt-3 space-y-3">
                       {/* Leaders */}
                       <p className="text-sm">
-                        <span className="font-medium">Leaders:</span> {bibleStudyGroup.leaders.length > 0 ? bibleStudyGroup.leaders.map(l => l.name).join(', ') : 'None'}
+                        <span className="font-medium">Leaders:</span> {getLeaderNames(bibleStudyGroup.leaders)}
                       </p>
 
                       {/* Location */}
@@ -399,7 +451,7 @@ export function BibleStudyGroupList() {
                 <CollapsibleContent className="mt-3 space-y-3">
                 {/* Leaders */}
                 <p className="text-sm">
-                  <span className="font-medium">Leaders:</span> {bibleStudyGroup.leaders.length > 0 ? bibleStudyGroup.leaders.map(l => l.name).join(', ') : 'None'}
+                  <span className="font-medium">Leaders:</span> {getLeaderNames(bibleStudyGroup.leaders)}
                 </p>
 
                 {/* Location */}

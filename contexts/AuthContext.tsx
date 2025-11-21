@@ -67,13 +67,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       const user = await signupWithEmailPassword(data);
 
-      // Create user profile in Firestore with default 'user' role
+      // Create user profile in Firestore
+      // Role is automatically set to 'user' via Cloud Function
       try {
         await createUserProfile(
           user.uid,
-          data.email,
+          '', // Phone number not available for email signup
           data.displayName,
-          'user' // Default role for new users
+          data.email
         );
       } catch (firestoreError: any) {
         console.error('Error creating user profile:', firestoreError);
@@ -142,13 +143,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Create user profile in Firestore if it doesn't exist (only for new users)
+      // Role is automatically set to 'user' via Cloud Function
       if (isNewUser) {
         try {
           await createUserProfile(
             user.uid,
             user.phoneNumber || '',
             displayName || user.displayName || undefined,
-            'user'
+            undefined // email is optional
           );
         } catch (firestoreError) {
           console.error('Error creating user profile:', firestoreError);

@@ -1,4 +1,4 @@
-export type { BibleStudyGroup, Leader, CreateBibleStudyGroupData, UpdateBibleStudyGroupData, MeetingTime, DayOfWeek } from './biblestudygroup';
+export type { BibleStudyGroup, CreateBibleStudyGroupData, UpdateBibleStudyGroupData, MeetingTime, DayOfWeek } from './biblestudygroup';
 export type {
   AuthState,
   EmailPasswordCredentials,

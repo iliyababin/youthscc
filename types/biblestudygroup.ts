@@ -1,14 +1,4 @@
 /**
- * Represents a leader in a bible study group
- */
-export interface Leader {
-  id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-}
-
-/**
  * Represents a member in a bible study group
  */
 export interface Member {
@@ -38,7 +28,7 @@ export interface BibleStudyGroup {
   name: string;
   description: string;
   location: string;
-  leaders: Leader[];
+  leaders: string[]; // Array of user UIDs
   meetingTimes: MeetingTime[]; // Array of recurring meeting times (required)
   members: Member[]; // Array of members (required, can be empty)
   createdAt?: Date;

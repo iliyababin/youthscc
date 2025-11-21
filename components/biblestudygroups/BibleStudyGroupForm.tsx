@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import { Clock, Plus } from 'lucide-react';
 import { useCreateBibleStudyGroup, useUpdateBibleStudyGroup } from '@/lib/firebase/hooks';
 import { useUserRole } from '@/hooks';
-import { getAllUsers } from '@/lib/firebase/userService';
-import type { Leader, MeetingTime, DayOfWeek, BibleStudyGroup } from '@/types';
+import { getAllUsers, getUsersByIds } from '@/lib/firebase/userService';
+import type { MeetingTime, DayOfWeek, BibleStudyGroup } from '@/types';
 import type { UserProfile } from '@/types/roles';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { CreateUserDialog } from '@/components/admin/create-user-dialog';
+import { formatPhoneNumberIntl } from 'react-phone-number-input';
 
 interface BibleStudyGroupFormProps {
   initialData?: BibleStudyGroup;
@@ -24,7 +26,9 @@ interface BibleStudyGroupFormProps {
 
 export function BibleStudyGroupForm({ initialData, onSuccess }: BibleStudyGroupFormProps) {
   const isEditMode = !!initialData;
-  const [leaders, setLeaders] = useState<Leader[]>(initialData?.leaders || []);
+  const [leaderIds, setLeaderIds] = useState<string[]>(initialData?.leaders || []);
+  const [leaderProfiles, setLeaderProfiles] = useState<Map<string, UserProfile>>(new Map());
+  const [isLoadingLeaders, setIsLoadingLeaders] = useState(false);
   const [meetingTimes, setMeetingTimes] = useState<MeetingTime[]>(initialData?.meetingTimes || []);
   const [selectedDayOfWeek, setSelectedDayOfWeek] = useState<DayOfWeek>('Monday');
   const [selectedHour, setSelectedHour] = useState<string>('7');
@@ -56,7 +60,7 @@ export function BibleStudyGroupForm({ initialData, onSuccess }: BibleStudyGroupF
               name: value.name.trim(),
               description: value.description.trim(),
               location: value.location.trim(),
-              leaders,
+              leaders: leaderIds,
               meetingTimes,
             },
           });
@@ -65,7 +69,7 @@ export function BibleStudyGroupForm({ initialData, onSuccess }: BibleStudyGroupF
             name: value.name.trim(),
             description: value.description.trim(),
             location: value.location.trim(),
-            leaders,
+            leaders: leaderIds,
             meetingTimes,
           });
         }
@@ -83,31 +87,74 @@ export function BibleStudyGroupForm({ initialData, onSuccess }: BibleStudyGroupF
   });
 
   // Load all users on mount
-  useEffect(() => {
-    async function loadUsers() {
-      try {
-        setIsLoadingUsers(true);
-        const users = await getAllUsers();
-        setAllUsers(users);
-      } catch (error) {
-        console.error('Error loading users:', error);
-        setAllUsers([]);
-      } finally {
-        setIsLoadingUsers(false);
-      }
+  const loadUsers = async () => {
+    try {
+      setIsLoadingUsers(true);
+      const users = await getAllUsers();
+      setAllUsers(users);
+    } catch (error) {
+      console.error('Error loading users:', error);
+      setAllUsers([]);
+    } finally {
+      setIsLoadingUsers(false);
     }
+  };
 
+  const handleUserCreated = async () => {
+    // Fetch just the new user list and update state without reloading
+    try {
+      const users = await getAllUsers();
+      setAllUsers(users);
+    } catch (error) {
+      console.error('Error refreshing users:', error);
+    }
+  };
+
+  useEffect(() => {
     if (permissions.canCreateCellGroups) {
       loadUsers();
     }
   }, [permissions.canCreateCellGroups]);
+
+  // Load leader profiles when leaderIds change
+  useEffect(() => {
+    async function loadLeaderProfiles() {
+      if (leaderIds.length === 0) {
+        setLeaderProfiles(new Map());
+        setIsLoadingLeaders(false);
+        return;
+      }
+
+      // Only fetch profiles we don't already have
+      const missingIds = leaderIds.filter(id => !leaderProfiles.has(id));
+
+      if (missingIds.length === 0) {
+        setIsLoadingLeaders(false);
+        return;
+      }
+
+      try {
+        setIsLoadingLeaders(true);
+        const newProfiles = await getUsersByIds(missingIds);
+        setLeaderProfiles(prev => new Map([...prev, ...newProfiles]));
+      } catch (error) {
+        console.error('Error loading leader profiles:', error);
+      } finally {
+        setIsLoadingLeaders(false);
+      }
+    }
+
+    if (permissions.canCreateCellGroups) {
+      loadLeaderProfiles();
+    }
+  }, [leaderIds, permissions.canCreateCellGroups]);
 
   // Filter users based on search term
   const filteredUsers = useMemo(() => {
     const normalizedSearch = searchTerm.toLowerCase().trim();
 
     return allUsers.filter((user) => {
-      if (leaders.some((leader) => leader.id === user.uid)) {
+      if (leaderIds.includes(user.uid)) {
         return false;
       }
 
@@ -120,7 +167,7 @@ export function BibleStudyGroupForm({ initialData, onSuccess }: BibleStudyGroupF
 
       return matchesEmail || matchesName;
     });
-  }, [searchTerm, allUsers, leaders]);
+  }, [searchTerm, allUsers, leaderIds]);
 
   if (roleLoading) {
     return (
@@ -141,16 +188,13 @@ export function BibleStudyGroupForm({ initialData, onSuccess }: BibleStudyGroupF
   }
 
   const handleAddLeader = (user: UserProfile) => {
-    const newLeader: Leader = {
-      id: user.uid,
-      name: user.displayName || user.email,
-      email: user.email,
-    };
-    setLeaders([...leaders, newLeader]);
+    setLeaderIds([...leaderIds, user.uid]);
+    // Immediately add the user profile to cache to avoid loading state
+    setLeaderProfiles(prev => new Map([...prev, [user.uid, user]]));
   };
 
-  const handleRemoveLeader = (id: string) => {
-    setLeaders(leaders.filter((leader) => leader.id !== id));
+  const handleRemoveLeader = (uid: string) => {
+    setLeaderIds(leaderIds.filter((id) => id !== uid));
   };
 
   const handleAddMeetingTime = () => {
@@ -196,7 +240,7 @@ export function BibleStudyGroupForm({ initialData, onSuccess }: BibleStudyGroupF
   const mutation = isEditMode ? updateBibleStudyGroup : createBibleStudyGroup;
 
   return (
-    <div className="max-w-2xl mx-auto p-6 sm:p-8 bg-white rounded-xl shadow-lg border border-gray-100">
+    <div className="max-w-2xl mx-auto p-6 sm:p-8">
       <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-900">
         {isEditMode ? 'Edit Bible Study Group' : 'Create Bible Study Group'}
       </h2>
@@ -385,27 +429,25 @@ export function BibleStudyGroupForm({ initialData, onSuccess }: BibleStudyGroupF
 
           {/* Current Meeting Times */}
           {meetingTimes.length > 0 && (
-            <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
               {meetingTimes.map((meetingTime, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-100 text-purple-800 rounded-full text-sm font-medium"
                 >
-                  <div className="flex items-center gap-3">
-                    <Clock className="h-5 w-5 text-purple-600" />
-                    <span className="text-sm font-medium text-gray-900">
-                      {formatMeetingTime(meetingTime)}
-                    </span>
-                  </div>
-                  <Button
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>
+                    {formatMeetingTime(meetingTime)}
+                  </span>
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="sm"
                     onClick={() => handleRemoveMeetingTime(index)}
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                    className="hover:bg-purple-200 rounded-full p-0.5 transition-colors"
                   >
-                    Remove
-                  </Button>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
               ))}
             </div>
@@ -417,45 +459,59 @@ export function BibleStudyGroupForm({ initialData, onSuccess }: BibleStudyGroupF
           <Label className="block mb-3">Leaders</Label>
 
           {/* Current Leaders */}
-          {leaders.length > 0 && (
-            <div className="mb-4 space-y-2">
-              {leaders.map((leader) => (
-                <div
-                  key={leader.id}
-                  className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg gap-2 border border-blue-200"
-                >
-                  <div className="flex-1 min-w-0">
-                    <span className="font-medium text-sm block truncate text-gray-900">
-                      {leader.name}
-                    </span>
-                    {leader.email && (
-                      <span className="text-xs text-gray-500 block truncate">
-                        {leader.email}
+          {leaderIds.length > 0 && (
+            <div className="mb-4 flex flex-wrap gap-2">
+              {isLoadingLeaders ? (
+                <div className="p-4 text-center text-gray-500">Loading leaders...</div>
+              ) : (
+                leaderIds.map((leaderId) => {
+                  const leader = leaderProfiles.get(leaderId);
+                  return (
+                    <div
+                      key={leaderId}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
+                    >
+                      <span className="truncate max-w-[200px]">
+                        {leader ? (leader.displayName || leader.phoneNumber) : 'Unknown User'}
                       </span>
-                    )}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemoveLeader(leader.id)}
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                  >
-                    Remove
-                  </Button>
-                </div>
-              ))}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveLeader(leaderId)}
+                        className="hover:bg-blue-200 rounded-full p-0.5 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  );
+                })
+              )}
             </div>
           )}
 
           {/* Search Bar */}
           <div className="space-y-3">
-            <Input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search users by name or email..."
-            />
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search users by name or email..."
+              />
+              <CreateUserDialog
+                trigger={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                }
+              />
+            </div>
 
             {/* Users List */}
             <ScrollArea className="h-48 rounded-md border bg-gray-50">
@@ -478,7 +534,9 @@ export function BibleStudyGroupForm({ initialData, onSuccess }: BibleStudyGroupF
                           <div className="font-medium text-sm truncate text-gray-900">
                             {user.displayName || 'No name'}
                           </div>
-                          <div className="text-xs text-gray-500 truncate">{user.email}</div>
+                          <div className="text-xs text-gray-500 truncate">
+                            {formatPhoneNumberIntl(user.phoneNumber)}
+                          </div>
                         </div>
                         {user.role === 'admin' && (
                           <span className="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full font-medium flex-shrink-0">

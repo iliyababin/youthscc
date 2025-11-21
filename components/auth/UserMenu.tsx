@@ -3,10 +3,20 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts';
-import { User } from 'lucide-react';
+import { useUserRole } from '@/hooks';
+import { User, Settings, LogOut } from 'lucide-react';
+import Link from 'next/link';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export function UserMenu() {
   const { user, logout } = useAuth();
+  const { role } = useUserRole();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const router = useRouter();
 
@@ -25,18 +35,39 @@ export function UserMenu() {
   if (!user) return null;
 
   return (
-    <div className="flex items-center justify-between w-full gap-4">
-      <div className="flex items-center gap-2">
+    <DropdownMenu>
+      <DropdownMenuTrigger className="flex items-center gap-2 hover:opacity-80 transition-opacity outline-none">
         <User className="w-5 h-5 text-gray-600" />
         <span className="text-sm font-medium text-gray-700">{user.displayName || 'Profile'}</span>
-      </div>
-      <button
-        onClick={handleLogout}
-        disabled={isLoggingOut}
-        className="px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-50 ml-auto"
-      >
-        {isLoggingOut ? 'Logging out...' : 'Sign out'}
-      </button>
-    </div>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuItem asChild>
+          <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
+            <User className="w-4 h-4" />
+            Profile
+          </Link>
+        </DropdownMenuItem>
+
+        {role === 'admin' && (
+          <DropdownMenuItem asChild>
+            <Link href="/admin" className="flex items-center gap-2 cursor-pointer">
+              <Settings className="w-4 h-4" />
+              Admin Dashboard
+            </Link>
+          </DropdownMenuItem>
+        )}
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuItem
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          className="flex items-center gap-2 cursor-pointer"
+        >
+          <LogOut className="w-4 h-4" />
+          {isLoggingOut ? 'Logging out...' : 'Sign out'}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

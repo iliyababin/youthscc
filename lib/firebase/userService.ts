@@ -17,7 +17,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { UserProfile, UserRole } from '@/types/roles';
+import type { UserProfile, UserRole, PublicUserProfile } from '@/types/roles';
 
 /**
  * Get user profile from Firestore
@@ -32,6 +32,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   const data = userDoc.data();
   return {
     uid: userDoc.id,
+    phoneNumber: data.phoneNumber,
     email: data.email,
     displayName: data.displayName,
     role: data.role || 'user',
@@ -41,24 +42,42 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
 }
 
 /**
+ * Create or update public user profile
+ * This is separate from the private user profile and contains only displayName
+ */
+async function syncPublicProfile(uid: string, displayName: string): Promise<void> {
+  const publicProfileRef = doc(db, 'publicProfiles', uid);
+  await setDoc(publicProfileRef, {
+    uid,
+    displayName,
+  });
+}
+
+/**
  * Create user profile in Firestore
  * Called when a new user signs up
+ * Note: Roles are managed via custom claims only (not stored in Firestore)
  */
 export async function createUserProfile(
   uid: string,
-  email: string,
+  phoneNumber: string,
   displayName?: string,
-  role: UserRole = 'user'
+  email?: string
 ): Promise<void> {
   const userRef = doc(db, 'users', uid);
 
   await setDoc(userRef, {
-    email,
+    phoneNumber,
+    email: email || null,
     displayName: displayName || null,
-    role,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+
+  // Also create public profile if displayName is provided
+  if (displayName) {
+    await syncPublicProfile(uid, displayName);
+  }
 }
 
 /**
@@ -95,6 +114,7 @@ export async function getAllUsers(): Promise<UserProfile[]> {
     const data = doc.data();
     const user: UserProfile = {
       uid: doc.id,
+      phoneNumber: data.phoneNumber,
       email: data.email,
       displayName: data.displayName,
       role: data.role || 'user',
@@ -130,6 +150,7 @@ export async function searchUsers(searchTerm: string): Promise<UserProfile[]> {
     const data = doc.data();
     const user: UserProfile = {
       uid: doc.id,
+      phoneNumber: data.phoneNumber,
       email: data.email,
       displayName: data.displayName,
       role: data.role || 'user',
@@ -137,14 +158,83 @@ export async function searchUsers(searchTerm: string): Promise<UserProfile[]> {
       updatedAt: data.updatedAt?.toDate(),
     };
 
-    // Filter by email or display name
+    // Filter by phone, email, or display name
+    const matchesPhone = user.phoneNumber?.toLowerCase().includes(normalizedSearch);
     const matchesEmail = user.email?.toLowerCase().includes(normalizedSearch);
     const matchesName = user.displayName?.toLowerCase().includes(normalizedSearch);
 
-    if (matchesEmail || matchesName) {
+    if (matchesPhone || matchesEmail || matchesName) {
       users.push(user);
     }
   });
 
   return users.slice(0, 10); // Limit to 10 results
+}
+
+/**
+ * Get multiple user profiles by UIDs
+ * Efficiently fetches user profiles for an array of UIDs
+ */
+export async function getUsersByIds(uids: string[]): Promise<Map<string, UserProfile>> {
+  const userMap = new Map<string, UserProfile>();
+
+  if (uids.length === 0) {
+    return userMap;
+  }
+
+  // Fetch all user profiles in parallel
+  const userPromises = uids.map(uid => getUserProfile(uid));
+  const users = await Promise.all(userPromises);
+
+  // Build map of uid -> UserProfile
+  users.forEach((user, index) => {
+    if (user) {
+      userMap.set(uids[index], user);
+    }
+  });
+
+  return userMap;
+}
+
+/**
+ * Get public profile by UID
+ * This is safe to call from anywhere as it only contains displayName
+ */
+export async function getPublicProfile(uid: string): Promise<PublicUserProfile | null> {
+  const profileDoc = await getDoc(doc(db, 'publicProfiles', uid));
+
+  if (!profileDoc.exists()) {
+    return null;
+  }
+
+  const data = profileDoc.data();
+  return {
+    uid: profileDoc.id,
+    displayName: data.displayName || 'Unknown User',
+  };
+}
+
+/**
+ * Get multiple public profiles by UIDs
+ * This is safe to call from anywhere (even unauthenticated) for displaying leader names
+ */
+export async function getPublicProfilesByIds(uids: string[]): Promise<Map<string, PublicUserProfile>> {
+  const profileMap = new Map<string, PublicUserProfile>();
+
+  if (uids.length === 0) {
+    return profileMap;
+  }
+
+  // Fetch all public profiles in parallel
+  const profilePromises = uids.map(uid => getPublicProfile(uid));
+  const profiles = await Promise.all(profilePromises);
+
+  // Build map of uid -> PublicUserProfile
+  profiles.forEach((profile, index) => {
+    if (profile) {
+      profileMap.set(uids[index], profile);
+    }
+  });
+
+  return profileMap;
 }

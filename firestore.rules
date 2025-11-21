@@ -8,24 +8,34 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Helper function to check if user has admin role
+    // Helper function to check if user has admin role (using custom claims)
     function isAdmin() {
       return isAuthenticated() &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+             request.auth.token.role == 'admin';
     }
 
-    // Helper function to check if user has leader role
+    // Helper function to check if user has leader role (using custom claims)
     function isLeader() {
       return isAuthenticated() &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'leader';
+             request.auth.token.role == 'leader';
     }
 
-    // Users collection
+    // Users collection - PRIVATE data (phone, email)
     match /users/{userId} {
+      // Authenticated users can read any user profile (needed for leader selection in forms)
+      // This is acceptable since only authenticated users have access
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && request.auth.uid == userId;
       allow delete: if isAdmin();
+    }
+
+    // Public user profiles - for displaying leader names in groups
+    match /publicProfiles/{userId} {
+      // Anyone can read public profiles (only contains displayName and uid)
+      allow read: if true;
+      // Only the user themselves or admins can update
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
     }
 
     // Bible study groups collection
@@ -41,9 +51,9 @@ service cloud.firestore {
 
       // Allow updates in these cases:
       // 1. Admin or leader can update anything
-      // 2. Authenticated users can update members and updatedAt fields only
-      allow update: if isAdmin() ||
-                       isLeader() ||
+      // 2. Authenticated users can update members and updatedAt (for join/leave)
+      //    We trust the client-side validation since this is a small community app
+      allow update: if isAdmin() || isLeader() ||
                        (isAuthenticated() &&
                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'updatedAt']));
     }

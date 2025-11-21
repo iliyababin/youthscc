@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts';
-import { getUserProfile } from '@/lib/firebase/userService';
 import type { UserRole } from '@/types/roles';
 import { ROLE_PERMISSIONS } from '@/types/roles';
 
 /**
- * Hook to get current user's role and permissions
+ * Hook to get current user's role and permissions from custom claims
  */
 export function useUserRole() {
   const { user } = useAuth();
@@ -23,10 +22,12 @@ export function useUserRole() {
       }
 
       try {
-        const profile = await getUserProfile(user.uid);
-        setRole(profile?.role || 'user');
+        // Get the ID token result which contains custom claims
+        const idTokenResult = await user.getIdTokenResult();
+        const customRole = idTokenResult.claims.role as UserRole | undefined;
+        setRole(customRole || 'user');
       } catch (error) {
-        console.error('Error fetching user role:', error);
+        console.error('Error fetching user role from custom claims:', error);
         setRole('user');
       } finally {
         setLoading(false);

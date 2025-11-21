@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts';
 import { UserMenu } from '@/components/auth';
 import { User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export function Header() {
   const { user, loading } = useAuth();
@@ -50,16 +51,6 @@ export function Header() {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6">
             <Link
-              href="/"
-              className={`text-sm font-medium transition-colors ${
-                pathname === '/'
-                  ? 'text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Home
-            </Link>
-            <Link
               href="/biblestudygroups"
               className={`text-sm font-medium transition-colors ${
                 pathname === '/biblestudygroups'
@@ -70,24 +61,15 @@ export function Header() {
               Bible Study Groups
             </Link>
 
-            {!loading && user && <UserMenu />}
-
-            {!loading && !user && (
-              <div className="flex items-center gap-2">
-                <Link
-                  href="/auth"
-                  className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
-                >
-                  Login
+            {user ? (
+              <UserMenu />
+            ) : !loading ? (
+              <Button variant="outline" asChild>
+                <Link href="/auth">
+                  Join
                 </Link>
-                <Link
-                  href="/auth"
-                  className="px-3 py-1.5 text-sm font-medium text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                >
-                  Sign up
-                </Link>
-              </div>
-            )}
+              </Button>
+            ) : null}
           </nav>
 
           {/* Mobile Menu Button */}
@@ -117,17 +99,6 @@ export function Header() {
           <div className="md:hidden py-4 border-t">
             <div className="space-y-2">
               <Link
-                href="/"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${
-                  pathname === '/'
-                    ? 'bg-blue-50 text-blue-600'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`}
-              >
-                Home
-              </Link>
-              <Link
                 href="/biblestudygroups"
                 onClick={() => setMobileMenuOpen(false)}
                 className={`block px-3 py-2 rounded-md text-base font-medium ${
@@ -149,13 +120,11 @@ export function Header() {
                       <User className="w-5 h-5 text-gray-600" />
                       <span className="text-sm font-medium text-gray-700">Guest</span>
                     </div>
-                    <Link
-                      href="/auth"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md transition-colors ml-auto"
-                    >
-                      Join
-                    </Link>
+                    <Button variant="outline" asChild onClick={() => setMobileMenuOpen(false)}>
+                      <Link href="/auth">
+                        Join
+                      </Link>
+                    </Button>
                   </div>
                 )}
               </div>

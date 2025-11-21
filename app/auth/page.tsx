@@ -133,12 +133,13 @@ export default function AuthPage() {
       await updateProfile(verifiedUser, { displayName });
 
       // Create user profile in Firestore
+      // Role is automatically set to 'user' via Cloud Function
       const { createUserProfile } = await import('@/lib/firebase/userService');
       await createUserProfile(
         verifiedUser.uid,
         verifiedUser.phoneNumber || '',
         displayName,
-        'user'
+        undefined // email is optional
       );
 
       router.push('/biblestudygroups');
@@ -244,14 +245,15 @@ export default function AuthPage() {
                   pattern={REGEXP_ONLY_DIGITS}
                   value={verificationCode}
                   onChange={(value) => setVerificationCode(value)}
+                  className="gap-3"
                 >
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                    <InputOTPSlot index={3} />
-                    <InputOTPSlot index={4} />
-                    <InputOTPSlot index={5} />
+                  <InputOTPGroup className="gap-3">
+                    <InputOTPSlot index={0} className="w-12 h-14 text-2xl" />
+                    <InputOTPSlot index={1} className="w-12 h-14 text-2xl" />
+                    <InputOTPSlot index={2} className="w-12 h-14 text-2xl" />
+                    <InputOTPSlot index={3} className="w-12 h-14 text-2xl" />
+                    <InputOTPSlot index={4} className="w-12 h-14 text-2xl" />
+                    <InputOTPSlot index={5} className="w-12 h-14 text-2xl" />
                   </InputOTPGroup>
                 </InputOTP>
               </div>
